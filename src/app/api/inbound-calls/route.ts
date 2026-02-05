@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   // Nur Anzahl offener Anrufe (für Badge)
   if (countOnly) {
     const { count, error } = await supabase
-      .from('inbound_calls')
+      .from('inbound_calls_+4915888651151')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'offen')
 
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   // Query aufbauen mit verknüpften Daten
   let query = supabase
-    .from('inbound_calls')
+    .from('inbound_calls_+4915888651151')
     .select(`
       *,
       applicants:applicant_id (id, first_name, last_name, phone, email),
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     const { data, error } = await supabase
-      .from('inbound_calls')
+      .from('inbound_calls_+4915888651151')
       .insert({
         caller_phone: body.caller_phone,
         called_number: body.called_number,
@@ -164,7 +164,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('inbound_calls')
+      .from('inbound_calls_+4915888651151')
       .update(updates)
       .eq('id', body.id)
       .select(`
@@ -196,7 +196,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const { error } = await supabase
-    .from('inbound_calls')
+    .from('inbound_calls_+4915888651151')
     .delete()
     .eq('id', id)
 
