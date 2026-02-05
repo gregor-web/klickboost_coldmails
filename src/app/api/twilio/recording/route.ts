@@ -1,0 +1,109 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase'
+
+// Für Tests: Einzelne Nummer statt Gruppe
+const TWOCHAT_RECIPIENT = '+436764509422'
+// Gruppe für Produktion: 'WAG32655201-a822-49cc-87a3-4226054c0239'
+
+// WhatsApp Nachricht mit Audio via TwoChat senden
+async function sendWhatsAppNotification(
+  callerPhone: string,
+  recordingUrl: string
+) {
+  const apiKey = process.env.TWOCHAT_API_KEY
+  const phoneNumber = process.env.TWOCHAT_PHONE_NUMBER
+
+  if (!apiKey || !phoneNumber) {
+    console.log('TwoChat not configured, skipping WhatsApp notification')
+    return
+  }
+
+  try {
+    const message = `📞 Neue Voicemail!\n\nVon: ${callerPhone}`
+
+    // Text-Nachricht senden
+    await fetch('https://api.p.2chat.io/open/whatsapp/send-message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-API-Key': apiKey
+      },
+      body: JSON.stringify({
+        to_number: TWOCHAT_RECIPIENT,
+        from_number: phoneNumber,
+        text: message
+      })
+    })
+
+    console.log('WhatsApp text notification sent')
+
+    // Audio senden
+    const audioUrl = `${recordingUrl}.mp3`
+
+    await fetch('https://api.p.2chat.io/open/whatsapp/send-audio', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-API-Key': apiKey
+      },
+      body: JSON.stringify({
+        to_number: TWOCHAT_RECIPIENT,
+        from_number: phoneNumber,
+        url: audioUrl
+      })
+    })
+
+    console.log('WhatsApp audio sent:', audioUrl)
+  } catch (error) {
+    console.error('Error sending WhatsApp notification:', error)
+  }
+}
+
+// Twilio Recording Status Callback
+export async function POST(request: NextRequest) {
+  const formData = await request.formData()
+
+  const callSid = formData.get('CallSid') as string || ''
+  const recordingUrl = formData.get('RecordingUrl') as string || ''
+  const recordingStatus = formData.get('RecordingStatus') as string || ''
+  const recordingDuration = parseInt(formData.get('RecordingDuration') as string || '0')
+
+  console.log('Recording callback:', { callSid, recordingUrl, recordingStatus, recordingDuration })
+
+  // Nur wenn Recording fertig ist
+  if (recordingStatus !== 'completed') {
+    return NextResponse.json({ success: true })
+  }
+
+  try {
+    const supabase = createServerClient()
+
+    // Anruf-Daten laden um Caller Phone zu bekommen
+    const { data: callData } = await supabase
+      .from('inbound_calls_+4915888651151')
+      .select('caller_phone')
+      .eq('twilio_call_sid', callSid)
+      .single()
+
+    // Anruf mit Recording-URL aktualisieren
+    await supabase
+      .from('inbound_calls_+4915888651151')
+      .update({
+        voicemail_url: `${recordingUrl}.mp3`,
+        has_voicemail: true,
+        call_duration: recordingDuration,
+        updated_at: new Date().toISOString()
+      })
+      .eq('twilio_call_sid', callSid)
+
+    // WhatsApp Benachrichtigung senden
+    if (callData?.caller_phone) {
+      await sendWhatsAppNotification(callData.caller_phone, recordingUrl)
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error processing recording:', error)
+    return NextResponse.json({ error: 'Failed to process recording' }, { status: 500 })
+  }
+}

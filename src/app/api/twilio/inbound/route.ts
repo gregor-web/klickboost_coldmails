@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 
-// Twilio Webhook: Anruf speichern (wird bei Anruf-Eingang aufgerufen)
+// TwiML Response erstellen
+function createTwiMLResponse(twiml: string) {
+  return new NextResponse(twiml, {
+    headers: {
+      'Content-Type': 'text/xml'
+    }
+  })
+}
+
+// Twilio Webhook: Anruf speichern und TwiML zurückgeben
 export async function POST(request: NextRequest) {
   const formData = await request.formData()
 
@@ -15,7 +24,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createServerClient()
 
-    const { error } = await supabase.from('inbound_calls_+4915888651151').insert({
+    await supabase.from('inbound_calls_+4915888651151').insert({
       caller_phone: callerPhone,
       called_number: calledNumber,
       twilio_call_sid: callSid,
@@ -25,18 +34,22 @@ export async function POST(request: NextRequest) {
       called_at: new Date().toISOString(),
       has_voicemail: false
     })
-
-    if (error) {
-      console.error('Supabase error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    // WhatsApp Benachrichtigung wird im Status-Webhook gesendet
-    // wenn der Anruf abgeschlossen ist (mit Recording URL)
-
-    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error saving call:', error)
-    return NextResponse.json({ error: 'Failed to save call' }, { status: 500 })
   }
+
+  // TwiML: Ansage abspielen und Voicemail aufnehmen
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say language="de-DE">Hallo, leider sind wir gerade nicht erreichbar. Bitte hinterlassen Sie eine Nachricht nach dem Signalton.</Say>
+  <Record
+    maxLength="120"
+    playBeep="true"
+    recordingStatusCallback="/api/twilio/recording"
+    recordingStatusCallbackMethod="POST"
+  />
+  <Say language="de-DE">Danke für Ihre Nachricht. Auf Wiederhören.</Say>
+</Response>`
+
+  return createTwiMLResponse(twiml)
 }
