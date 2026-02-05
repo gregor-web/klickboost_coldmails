@@ -18,11 +18,14 @@ async function sendWhatsAppNotification(
     return
   }
 
-  try {
-    const message = `📞 Neue Voicemail!\n\nVon: ${callerPhone}`
+  console.log('Sending WhatsApp notification to:', TWOCHAT_RECIPIENT)
+  console.log('Recording URL:', recordingUrl)
 
-    // Text-Nachricht senden
-    await fetch('https://api.p.2chat.io/open/whatsapp/send-message', {
+  try {
+    const message = `📞 Neue Voicemail!\n\nVon: ${callerPhone}\n\nAudio: ${recordingUrl}.mp3`
+
+    // Text-Nachricht mit Audio-Link senden
+    const textResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-message', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,25 +38,38 @@ async function sendWhatsAppNotification(
       })
     })
 
-    console.log('WhatsApp text notification sent')
+    const textResult = await textResponse.json()
+    console.log('WhatsApp text response:', textResponse.status, textResult)
 
-    // Audio senden
-    const audioUrl = `${recordingUrl}.mp3`
+    // Audio senden - mit Twilio Basic Auth in der URL
+    const twilioSid = process.env.TWILIO_ACCOUNT_SID
+    const twilioToken = process.env.TWILIO_AUTH_TOKEN
 
-    await fetch('https://api.p.2chat.io/open/whatsapp/send-audio', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-API-Key': apiKey
-      },
-      body: JSON.stringify({
-        to_number: TWOCHAT_RECIPIENT,
-        from_number: phoneNumber,
-        url: audioUrl
+    if (twilioSid && twilioToken) {
+      // Authentifizierte URL erstellen
+      const authUrl = recordingUrl.replace('https://', `https://${twilioSid}:${twilioToken}@`)
+      const audioUrl = `${authUrl}.mp3`
+
+      console.log('Sending audio with auth URL')
+
+      const audioResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-API-Key': apiKey
+        },
+        body: JSON.stringify({
+          to_number: TWOCHAT_RECIPIENT,
+          from_number: phoneNumber,
+          url: audioUrl
+        })
       })
-    })
 
-    console.log('WhatsApp audio sent:', audioUrl)
+      const audioResult = await audioResponse.json()
+      console.log('WhatsApp audio response:', audioResponse.status, audioResult)
+    } else {
+      console.log('Twilio credentials not configured, cannot send audio')
+    }
   } catch (error) {
     console.error('Error sending WhatsApp notification:', error)
   }
@@ -99,6 +115,8 @@ export async function POST(request: NextRequest) {
     // WhatsApp Benachrichtigung senden
     if (callData?.caller_phone) {
       await sendWhatsAppNotification(callData.caller_phone, recordingUrl)
+    } else {
+      console.log('No caller_phone found for callSid:', callSid)
     }
 
     return NextResponse.json({ success: true })
