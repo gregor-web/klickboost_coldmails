@@ -108,12 +108,13 @@ export async function POST(request: NextRequest) {
 
     // Anruf-Daten laden um Caller Phone zu bekommen
     console.log('Looking for call with SID:', callSid)
-    const { data: callData, error: fetchError } = await supabase
+    const { data: callDataArray, error: fetchError } = await supabase
       .from('inbound_calls_+4915888651151')
       .select('caller_phone')
       .eq('twilio_call_sid', callSid)
-      .single()
+      .limit(1)
 
+    const callData = callDataArray?.[0] || null
     console.log('Supabase fetch result:', { callData, fetchError })
 
     // Anruf mit Recording-URL aktualisieren
