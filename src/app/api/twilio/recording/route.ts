@@ -5,6 +5,9 @@ import { createServerClient } from '@/lib/supabase'
 const TWOCHAT_RECIPIENT = '+436764509422'
 // Gruppe für Produktion: 'WAG32655201-a822-49cc-87a3-4226054c0239'
 
+// Produktions-URL
+const BASE_URL = 'https://klickboost-coldmails.vercel.app'
+
 // WhatsApp Nachricht mit Audio via TwoChat senden
 async function sendWhatsAppNotification(
   callerPhone: string,
@@ -22,9 +25,13 @@ async function sendWhatsAppNotification(
   console.log('Recording URL:', recordingUrl)
 
   try {
-    const message = `📞 Neue Voicemail!\n\nVon: ${callerPhone}\n\nAudio: ${recordingUrl}.mp3`
+    // Proxy-URL erstellen (öffentlich zugänglich, ohne Twilio-Auth)
+    const proxyUrl = `${BASE_URL}/api/voicemail-proxy?url=${encodeURIComponent(recordingUrl + '.mp3')}`
+    console.log('Proxy URL:', proxyUrl)
 
-    // Text-Nachricht mit Audio-Link senden
+    const message = `📞 Neue Voicemail!\n\nVon: ${callerPhone}`
+
+    // Text-Nachricht senden
     const textResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-message', {
       method: 'POST',
       headers: {
@@ -41,35 +48,24 @@ async function sendWhatsAppNotification(
     const textResult = await textResponse.json()
     console.log('WhatsApp text response:', textResponse.status, textResult)
 
-    // Audio senden - mit Twilio Basic Auth in der URL
-    const twilioSid = process.env.TWILIO_ACCOUNT_SID
-    const twilioToken = process.env.TWILIO_AUTH_TOKEN
+    // Audio über unsere Proxy-URL senden
+    console.log('Sending audio via proxy URL')
 
-    if (twilioSid && twilioToken) {
-      // Authentifizierte URL erstellen
-      const authUrl = recordingUrl.replace('https://', `https://${twilioSid}:${twilioToken}@`)
-      const audioUrl = `${authUrl}.mp3`
-
-      console.log('Sending audio with auth URL')
-
-      const audioResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-audio', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-API-Key': apiKey
-        },
-        body: JSON.stringify({
-          to_number: TWOCHAT_RECIPIENT,
-          from_number: phoneNumber,
-          url: audioUrl
-        })
+    const audioResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-audio', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-API-Key': apiKey
+      },
+      body: JSON.stringify({
+        to_number: TWOCHAT_RECIPIENT,
+        from_number: phoneNumber,
+        url: proxyUrl
       })
+    })
 
-      const audioResult = await audioResponse.json()
-      console.log('WhatsApp audio response:', audioResponse.status, audioResult)
-    } else {
-      console.log('Twilio credentials not configured, cannot send audio')
-    }
+    const audioResult = await audioResponse.json()
+    console.log('WhatsApp audio response:', audioResponse.status, audioResult)
   } catch (error) {
     console.error('Error sending WhatsApp notification:', error)
   }
