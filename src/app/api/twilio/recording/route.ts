@@ -77,32 +77,47 @@ async function sendWhatsAppNotification(
 
 // Twilio Recording Status Callback
 export async function POST(request: NextRequest) {
+  console.log('=== RECORDING CALLBACK RECEIVED ===')
+
   const formData = await request.formData()
+
+  // Alle Form-Felder loggen
+  const allFields: Record<string, string> = {}
+  formData.forEach((value, key) => {
+    allFields[key] = value.toString()
+  })
+  console.log('All form fields:', JSON.stringify(allFields))
 
   const callSid = formData.get('CallSid') as string || ''
   const recordingUrl = formData.get('RecordingUrl') as string || ''
   const recordingStatus = formData.get('RecordingStatus') as string || ''
   const recordingDuration = parseInt(formData.get('RecordingDuration') as string || '0')
 
-  console.log('Recording callback:', { callSid, recordingUrl, recordingStatus, recordingDuration })
+  console.log('Recording callback parsed:', { callSid, recordingUrl, recordingStatus, recordingDuration })
 
   // Nur wenn Recording fertig ist
   if (recordingStatus !== 'completed') {
+    console.log('Recording not completed yet, status:', recordingStatus)
     return NextResponse.json({ success: true })
   }
+
+  console.log('Recording completed, processing...')
 
   try {
     const supabase = createServerClient()
 
     // Anruf-Daten laden um Caller Phone zu bekommen
-    const { data: callData } = await supabase
+    console.log('Looking for call with SID:', callSid)
+    const { data: callData, error: fetchError } = await supabase
       .from('inbound_calls_+4915888651151')
       .select('caller_phone')
       .eq('twilio_call_sid', callSid)
       .single()
 
+    console.log('Supabase fetch result:', { callData, fetchError })
+
     // Anruf mit Recording-URL aktualisieren
-    await supabase
+    const { error: updateError } = await supabase
       .from('inbound_calls_+4915888651151')
       .update({
         voicemail_url: `${recordingUrl}.mp3`,
@@ -112,13 +127,17 @@ export async function POST(request: NextRequest) {
       })
       .eq('twilio_call_sid', callSid)
 
+    console.log('Supabase update result:', { updateError })
+
     // WhatsApp Benachrichtigung senden
     if (callData?.caller_phone) {
+      console.log('Sending WhatsApp to caller:', callData.caller_phone)
       await sendWhatsAppNotification(callData.caller_phone, recordingUrl)
     } else {
       console.log('No caller_phone found for callSid:', callSid)
     }
 
+    console.log('=== RECORDING CALLBACK DONE ===')
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error processing recording:', error)
