@@ -38,10 +38,8 @@ export async function POST(request: NextRequest) {
     console.error('Error saving call:', error)
   }
 
-  // Base URL für Callbacks (Vercel deployment)
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'https://klickboost-crm.vercel.app'
+  // Produktions-URL für Recording Callback (VERCEL_URL gibt Preview-URLs zurück!)
+  const baseUrl = 'https://klickboost-crm.vercel.app'
 
   // TwiML: Ansage abspielen und Voicemail aufnehmen
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
