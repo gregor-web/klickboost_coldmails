@@ -38,6 +38,11 @@ export async function POST(request: NextRequest) {
     console.error('Error saving call:', error)
   }
 
+  // Base URL für Callbacks (Vercel deployment)
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'https://klickboost-crm.vercel.app'
+
   // TwiML: Ansage abspielen und Voicemail aufnehmen
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
   <Record
     maxLength="120"
     playBeep="true"
-    recordingStatusCallback="/api/twilio/recording"
+    recordingStatusCallback="${baseUrl}/api/twilio/recording"
     recordingStatusCallbackMethod="POST"
   />
   <Say language="de-DE">Danke für Ihre Nachricht. Auf Wiederhören.</Say>
