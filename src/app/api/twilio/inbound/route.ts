@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 
-const TWOCHAT_GROUP_ID = 'WAG32655201-a822-49cc-87a3-4226054c0239'
+// Für Tests: Einzelne Nummer statt Gruppe
+const TWOCHAT_RECIPIENT = '+436764509422'
+// Gruppe für Produktion: 'WAG32655201-a822-49cc-87a3-4226054c0239'
 
 // WhatsApp Nachricht mit Audio via TwoChat senden
 async function sendWhatsAppNotification(
@@ -28,7 +30,7 @@ async function sendWhatsAppNotification(
         'X-User-API-Key': apiKey
       },
       body: JSON.stringify({
-        to_number: TWOCHAT_GROUP_ID,
+        to_number: TWOCHAT_RECIPIENT,
         from_number: phoneNumber,
         text: message
       })
@@ -48,7 +50,7 @@ async function sendWhatsAppNotification(
           'X-User-API-Key': apiKey
         },
         body: JSON.stringify({
-          to_number: TWOCHAT_GROUP_ID,
+          to_number: TWOCHAT_RECIPIENT,
           from_number: phoneNumber,
           url: audioUrl
         })
