@@ -17,18 +17,12 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
 import { StatusBadge } from './StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatPhoneNumber, formatRelativeTime, formatDuration } from '@/lib/utils'
 import type { InboundCallWithDetails, CallStatus, Profile } from '@/lib/types'
 import {
-  MoreHorizontal,
+  AlertCircle,
   Clock,
   CheckCircle2,
   Eye,
@@ -185,40 +179,48 @@ export function CallsTable({
 
               {/* Status */}
               <TableCell>
-                <StatusBadge status={call.status} />
+                <Select
+                  value={call.status}
+                  onValueChange={(value) => onStatusChange(call.id, value as CallStatus)}
+                >
+                  <SelectTrigger className="w-[140px] h-8">
+                    <SelectValue>
+                      <StatusBadge status={call.status} />
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="offen">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3 text-red-500" />
+                        Offen
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="bearbeitet">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-3 w-3 text-yellow-500" />
+                        In Bearbeitung
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="erledigt">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        Erledigt
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </TableCell>
 
               {/* Aktionen */}
               <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onViewDetails(call)}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Details anzeigen
-                    </DropdownMenuItem>
-                    {call.status === 'offen' && (
-                      <DropdownMenuItem
-                        onClick={() => onStatusChange(call.id, 'bearbeitet')}
-                      >
-                        <Clock className="mr-2 h-4 w-4" />
-                        Als bearbeitet markieren
-                      </DropdownMenuItem>
-                    )}
-                    {call.status !== 'erledigt' && (
-                      <DropdownMenuItem
-                        onClick={() => onStatusChange(call.id, 'erledigt')}
-                      >
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Als erledigt markieren
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onViewDetails(call)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
               </TableCell>
             </TableRow>
           ))}
