@@ -5,13 +5,74 @@ import { createServerClient } from '@/lib/supabase'
 const TWOCHAT_RECIPIENT = '+436764509422'
 // Gruppe für Produktion: 'WAG32655201-a822-49cc-87a3-4226054c0239'
 
-// Produktions-URL
-const BASE_URL = 'https://klickboost-coldmails.vercel.app'
+// Audio von Twilio herunterladen und zu Supabase Storage hochladen
+async function uploadAudioToStorage(
+  recordingUrl: string,
+  callSid: string
+): Promise<string | null> {
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+
+  if (!twilioSid || !twilioToken || !supabaseUrl) {
+    console.log('Missing credentials for audio upload')
+    return null
+  }
+
+  try {
+    // Audio von Twilio herunterladen (mit Auth)
+    const authHeader = 'Basic ' + Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64')
+    const audioUrl = `${recordingUrl}.mp3`
+
+    console.log('Downloading audio from Twilio:', audioUrl)
+
+    const audioResponse = await fetch(audioUrl, {
+      headers: { 'Authorization': authHeader }
+    })
+
+    if (!audioResponse.ok) {
+      console.error('Failed to download audio from Twilio:', audioResponse.status)
+      return null
+    }
+
+    const audioBuffer = await audioResponse.arrayBuffer()
+    console.log('Downloaded audio, size:', audioBuffer.byteLength, 'bytes')
+
+    // Zu Supabase Storage hochladen
+    const supabase = createServerClient()
+    const fileName = `voicemail_${callSid}_${Date.now()}.mp3`
+
+    const { data, error } = await supabase.storage
+      .from('voicemails')
+      .upload(fileName, audioBuffer, {
+        contentType: 'audio/mpeg',
+        upsert: true
+      })
+
+    if (error) {
+      console.error('Failed to upload to Supabase Storage:', error)
+      return null
+    }
+
+    console.log('Uploaded to Supabase Storage:', data.path)
+
+    // Öffentliche URL generieren
+    const { data: publicUrlData } = supabase.storage
+      .from('voicemails')
+      .getPublicUrl(fileName)
+
+    console.log('Public URL:', publicUrlData.publicUrl)
+    return publicUrlData.publicUrl
+  } catch (error) {
+    console.error('Error uploading audio:', error)
+    return null
+  }
+}
 
 // WhatsApp Nachricht mit Audio via TwoChat senden
 async function sendWhatsAppNotification(
   callerPhone: string,
-  recordingUrl: string
+  audioUrl: string
 ) {
   const apiKey = process.env.TWOCHAT_API_KEY
   const phoneNumber = process.env.TWOCHAT_PHONE_NUMBER
@@ -22,13 +83,9 @@ async function sendWhatsAppNotification(
   }
 
   console.log('Sending WhatsApp notification to:', TWOCHAT_RECIPIENT)
-  console.log('Recording URL:', recordingUrl)
+  console.log('Audio URL:', audioUrl)
 
   try {
-    // Proxy-URL erstellen (öffentlich zugänglich, ohne Twilio-Auth)
-    const proxyUrl = `${BASE_URL}/api/voicemail-proxy?url=${encodeURIComponent(recordingUrl + '.mp3')}`
-    console.log('Proxy URL:', proxyUrl)
-
     const message = `📞 Neue Voicemail!\n\nVon: ${callerPhone}`
 
     // Text-Nachricht senden
@@ -48,10 +105,10 @@ async function sendWhatsAppNotification(
     const textResult = await textResponse.json()
     console.log('WhatsApp text response:', textResponse.status, textResult)
 
-    // Audio über unsere Proxy-URL senden
-    console.log('Sending audio via proxy URL')
+    // Audio über Supabase URL senden (öffentlich zugänglich!)
+    console.log('Sending audio via public URL')
 
-    const audioResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-audio', {
+    const audioResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-message', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,7 +117,8 @@ async function sendWhatsAppNotification(
       body: JSON.stringify({
         to_number: TWOCHAT_RECIPIENT,
         from_number: phoneNumber,
-        url: proxyUrl
+        text: '🎵 Voicemail Audio:',
+        url: audioUrl
       })
     })
 
@@ -126,10 +184,32 @@ export async function POST(request: NextRequest) {
 
     console.log('Supabase update result:', { updateError })
 
+    // Audio zu Supabase Storage hochladen
+    const publicAudioUrl = await uploadAudioToStorage(recordingUrl, callSid)
+
     // WhatsApp Benachrichtigung senden
-    if (callData?.caller_phone) {
+    if (callData?.caller_phone && publicAudioUrl) {
       console.log('Sending WhatsApp to caller:', callData.caller_phone)
-      await sendWhatsAppNotification(callData.caller_phone, recordingUrl)
+      await sendWhatsAppNotification(callData.caller_phone, publicAudioUrl)
+    } else if (callData?.caller_phone) {
+      // Fallback: Nur Text-Nachricht senden wenn Audio-Upload fehlschlägt
+      console.log('Audio upload failed, sending text-only notification')
+      const apiKey = process.env.TWOCHAT_API_KEY
+      const phoneNumber = process.env.TWOCHAT_PHONE_NUMBER
+      if (apiKey && phoneNumber) {
+        await fetch('https://api.p.2chat.io/open/whatsapp/send-message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-API-Key': apiKey
+          },
+          body: JSON.stringify({
+            to_number: TWOCHAT_RECIPIENT,
+            from_number: phoneNumber,
+            text: `📞 Neue Voicemail!\n\nVon: ${callData.caller_phone}\n\n(Audio konnte nicht geladen werden)`
+          })
+        })
+      }
     } else {
       console.log('No caller_phone found for callSid:', callSid)
     }
