@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 
-// Für Tests: Einzelne Nummer statt Gruppe
-const TWOCHAT_RECIPIENT = '+436764509422'
-// Gruppe für Produktion: 'WAG32655201-a822-49cc-87a3-4226054c0239'
+// WhatsApp Gruppe für Voicemail-Benachrichtigungen
+const TWOCHAT_RECIPIENT = 'WAG32655201-a822-49cc-87a3-4226054c0239'
 
 // Audio von Twilio herunterladen und zu Supabase Storage hochladen
 async function uploadAudioToStorage(
