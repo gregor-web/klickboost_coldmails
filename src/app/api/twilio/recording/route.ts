@@ -87,7 +87,7 @@ async function sendWhatsAppNotification(
   try {
     const message = `📞 Neue Voicemail!\n\nVon: ${callerPhone}`
 
-    // Text-Nachricht senden
+    // Text-Nachricht an Gruppe senden (to_group_uuid statt to_number)
     const textResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-message', {
       method: 'POST',
       headers: {
@@ -95,7 +95,7 @@ async function sendWhatsAppNotification(
         'X-User-API-Key': apiKey
       },
       body: JSON.stringify({
-        to_number: TWOCHAT_RECIPIENT,
+        to_group_uuid: TWOCHAT_RECIPIENT,
         from_number: phoneNumber,
         text: message
       })
@@ -104,7 +104,7 @@ async function sendWhatsAppNotification(
     const textResult = await textResponse.json()
     console.log('WhatsApp text response:', textResponse.status, textResult)
 
-    // Audio über Supabase URL senden (öffentlich zugänglich!)
+    // Audio über Supabase URL an Gruppe senden
     console.log('Sending audio via public URL')
 
     const audioResponse = await fetch('https://api.p.2chat.io/open/whatsapp/send-message', {
@@ -114,7 +114,7 @@ async function sendWhatsAppNotification(
         'X-User-API-Key': apiKey
       },
       body: JSON.stringify({
-        to_number: TWOCHAT_RECIPIENT,
+        to_group_uuid: TWOCHAT_RECIPIENT,
         from_number: phoneNumber,
         url: audioUrl
       })
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
             'X-User-API-Key': apiKey
           },
           body: JSON.stringify({
-            to_number: TWOCHAT_RECIPIENT,
+            to_group_uuid: TWOCHAT_RECIPIENT,
             from_number: phoneNumber,
             text: `📞 Neue Voicemail!\n\nVon: ${callData.caller_phone}\n\n(Audio konnte nicht geladen werden)`
           })
