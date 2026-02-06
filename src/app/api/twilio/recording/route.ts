@@ -117,7 +117,6 @@ async function sendWhatsAppNotification(
       body: JSON.stringify({
         to_number: TWOCHAT_RECIPIENT,
         from_number: phoneNumber,
-        text: '🎵 Voicemail Audio:',
         url: audioUrl
       })
     })
