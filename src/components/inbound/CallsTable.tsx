@@ -28,7 +28,8 @@ import {
   Eye,
   Voicemail,
   PhoneForwarded,
-  User
+  User,
+  Trash2
 } from 'lucide-react'
 
 interface CallsTableProps {
@@ -38,6 +39,7 @@ interface CallsTableProps {
   onStatusChange: (id: string, status: CallStatus) => void
   onAssignmentChange: (id: string, assignedTo: string | null) => void
   onViewDetails: (call: InboundCallWithDetails) => void
+  onDelete: (call: InboundCallWithDetails) => void
 }
 
 export function CallsTable({
@@ -46,7 +48,8 @@ export function CallsTable({
   profiles,
   onStatusChange,
   onAssignmentChange,
-  onViewDetails
+  onViewDetails,
+  onDelete
 }: CallsTableProps) {
   if (loading) {
     return (
@@ -71,19 +74,21 @@ export function CallsTable({
     <div className="rounded-md border">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="bg-muted/60">
             <TableHead>Anrufer</TableHead>
-            <TableHead>Bewerber/Kunde</TableHead>
             <TableHead>Zeitpunkt</TableHead>
             <TableHead>Art</TableHead>
             <TableHead>Zugewiesen</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-[100px]">Aktionen</TableHead>
+            <TableHead className="w-[120px]">Aktionen</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {calls.map((call) => (
-            <TableRow key={call.id}>
+            <TableRow
+              key={call.id}
+              className="odd:bg-muted/30 hover:bg-muted/50 transition-colors"
+            >
               {/* Anrufer */}
               <TableCell>
                 <div>
@@ -96,26 +101,6 @@ export function CallsTable({
                     </div>
                   )}
                 </div>
-              </TableCell>
-
-              {/* Bewerber/Kunde */}
-              <TableCell>
-                {call.applicants ? (
-                  <div>
-                    <div className="font-medium">
-                      {call.applicants.first_name} {call.applicants.last_name}
-                    </div>
-                    {call.customers && (
-                      <div className="text-xs text-muted-foreground">
-                        {call.customers.name}
-                      </div>
-                    )}
-                  </div>
-                ) : call.customers ? (
-                  <div className="font-medium">{call.customers.name}</div>
-                ) : (
-                  <span className="text-muted-foreground">Unbekannt</span>
-                )}
               </TableCell>
 
               {/* Zeitpunkt */}
@@ -213,14 +198,24 @@ export function CallsTable({
 
               {/* Aktionen */}
               <TableCell>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => onViewDetails(call)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onViewDetails(call)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive"
+                    onClick={() => onDelete(call)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

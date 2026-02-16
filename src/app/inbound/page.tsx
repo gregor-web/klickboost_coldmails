@@ -21,6 +21,7 @@ export default function InboundPage() {
     updateCallStatus,
     updateCallAssignment,
     updateCall,
+    deleteCall,
     setFilterStatus,
     setFilterAssignedTo,
     setFilterTimeRange,
@@ -79,6 +80,21 @@ export default function InboundPage() {
     }
   }
 
+  const handleDeleteCall = async (call: InboundCallWithDetails) => {
+    const confirmed = window.confirm('Moechtest du diesen Anruf wirklich loeschen?')
+    if (!confirmed) return
+
+    try {
+      await deleteCall(call.id)
+      if (selectedCall?.id === call.id) {
+        setSelectedCall(null)
+        setModalOpen(false)
+      }
+    } catch (error) {
+      console.error('Failed to delete call:', error)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -113,6 +129,7 @@ export default function InboundPage() {
         onStatusChange={handleStatusChange}
         onAssignmentChange={handleAssignmentChange}
         onViewDetails={handleViewDetails}
+        onDelete={handleDeleteCall}
       />
 
       {/* Detail-Modal */}
@@ -122,6 +139,7 @@ export default function InboundPage() {
         onOpenChange={setModalOpen}
         onStatusChange={handleStatusChange}
         onNotesChange={handleNotesChange}
+        onDelete={handleDeleteCall}
       />
     </div>
   )

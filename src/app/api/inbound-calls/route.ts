@@ -98,6 +98,45 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
+    if (body.twilio_call_sid) {
+      const { data: existingCall, error: existingError } = await supabase
+        .from('inbound_calls_+4915888651151')
+        .select('*')
+        .eq('twilio_call_sid', body.twilio_call_sid)
+        .maybeSingle()
+
+      if (existingError) {
+        return NextResponse.json({ error: existingError.message }, { status: 500 })
+      }
+
+      if (existingCall) {
+        const updates: Record<string, unknown> = {
+          updated_at: new Date().toISOString()
+        }
+
+        if (body.caller_phone !== undefined) updates.caller_phone = body.caller_phone
+        if (body.called_number !== undefined) updates.called_number = body.called_number
+        if (body.call_duration !== undefined) updates.call_duration = body.call_duration
+        if (body.has_voicemail !== undefined) updates.has_voicemail = body.has_voicemail
+        if (body.voicemail_url !== undefined) updates.voicemail_url = body.voicemail_url
+        if (body.callback_requested !== undefined) updates.callback_requested = body.callback_requested
+        if (body.notes !== undefined) updates.notes = body.notes
+
+        const { data: updatedCall, error: updateError } = await supabase
+          .from('inbound_calls_+4915888651151')
+          .update(updates)
+          .eq('id', existingCall.id)
+          .select()
+          .single()
+
+        if (updateError) {
+          return NextResponse.json({ error: updateError.message }, { status: 500 })
+        }
+
+        return NextResponse.json(updatedCall, { status: 200 })
+      }
+    }
+
     const { data, error } = await supabase
       .from('inbound_calls_+4915888651151')
       .insert({

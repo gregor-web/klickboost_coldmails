@@ -175,6 +175,25 @@ export function useInboundCalls(currentUserId?: string) {
     }
   }, [fetchCalls])
 
+  const deleteCall = useCallback(async (id: string) => {
+    setCalls(prev => prev.filter(call => call.id !== id))
+
+    try {
+      const response = await fetch(`/api/inbound-calls?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete call')
+      }
+
+      return true
+    } catch (err) {
+      fetchCalls()
+      throw err
+    }
+  }, [fetchCalls])
+
   // Filter aktualisieren
   const setFilterStatus = useCallback((status: CallStatus | 'all') => {
     setFilter(prev => ({ ...prev, status }))
@@ -211,6 +230,7 @@ export function useInboundCalls(currentUserId?: string) {
     updateCallStatus,
     updateCallAssignment,
     updateCall,
+    deleteCall,
     setFilterStatus,
     setFilterAssignedTo,
     setFilterTimeRange,

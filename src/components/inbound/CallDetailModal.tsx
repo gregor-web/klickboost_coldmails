@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -18,13 +18,11 @@ import { formatPhoneNumber, formatDate, formatDuration } from '@/lib/utils'
 import type { InboundCallWithDetails, CallStatus } from '@/lib/types'
 import {
   Phone,
-  User,
-  Building2,
   Clock,
   CheckCircle2,
   PhoneForwarded,
   Voicemail,
-  ExternalLink
+  Trash2
 } from 'lucide-react'
 
 interface CallDetailModalProps {
@@ -33,6 +31,7 @@ interface CallDetailModalProps {
   onOpenChange: (open: boolean) => void
   onStatusChange: (id: string, status: CallStatus) => void
   onNotesChange: (id: string, notes: string) => void
+  onDelete: (call: InboundCallWithDetails) => void
 }
 
 export function CallDetailModal({
@@ -40,10 +39,15 @@ export function CallDetailModal({
   open,
   onOpenChange,
   onStatusChange,
-  onNotesChange
+  onNotesChange,
+  onDelete
 }: CallDetailModalProps) {
   const [notes, setNotes] = useState(call?.callback_notes || '')
   const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    setNotes(call?.callback_notes || '')
+  }, [call])
 
   if (!call) return null
 
@@ -86,74 +90,19 @@ export function CallDetailModal({
           <Separator />
 
           {/* Anrufer-Info */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                <Phone className="h-4 w-4" />
-                Anrufer
-              </div>
-              <div className="font-medium text-lg">
-                {formatPhoneNumber(call.caller_phone)}
-              </div>
-              {call.call_duration > 0 && (
-                <div className="text-sm text-muted-foreground mt-1">
-                  Dauer: {formatDuration(call.call_duration)}
-                </div>
-              )}
+          <div className="p-4 bg-muted rounded-lg">
+            <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+              <Phone className="h-4 w-4" />
+              Anrufer
             </div>
-
-            {/* Bewerber/Kunde */}
-            <div className="p-4 bg-muted rounded-lg">
-              {call.applicants ? (
-                <>
-                  <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    Bewerber
-                  </div>
-                  <div className="font-medium text-lg">
-                    {call.applicants.first_name} {call.applicants.last_name}
-                  </div>
-                  <Button
-                    variant="link"
-                    className="h-auto p-0 text-sm"
-                    asChild
-                  >
-                    <a href={`/applicants/${call.applicant_id}`}>
-                      Zum Bewerber <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
-                  </Button>
-                </>
-              ) : call.customers ? (
-                <>
-                  <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                    <Building2 className="h-4 w-4" />
-                    Kunde
-                  </div>
-                  <div className="font-medium text-lg">
-                    {call.customers.name}
-                  </div>
-                  <Button
-                    variant="link"
-                    className="h-auto p-0 text-sm"
-                    asChild
-                  >
-                    <a href={`/customers/${call.customer_id}`}>
-                      Zum Kunden <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    Kontakt
-                  </div>
-                  <div className="text-muted-foreground">
-                    Unbekannter Anrufer
-                  </div>
-                </>
-              )}
+            <div className="font-medium text-lg">
+              {formatPhoneNumber(call.caller_phone)}
             </div>
+            {call.call_duration > 0 && (
+              <div className="text-sm text-muted-foreground mt-1">
+                Dauer: {formatDuration(call.call_duration)}
+              </div>
+            )}
           </div>
 
           {/* Voicemail */}
@@ -217,6 +166,15 @@ export function CallDetailModal({
                 Als erledigt markieren
               </Button>
             )}
+          </div>
+
+          <Separator />
+
+          <div className="flex justify-end">
+            <Button variant="destructive" onClick={() => onDelete(call)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Anruf loeschen
+            </Button>
           </div>
         </div>
       </DialogContent>
