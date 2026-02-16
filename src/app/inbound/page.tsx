@@ -6,12 +6,24 @@ import { StatsCards } from '@/components/inbound/StatsCards'
 import { FilterBar } from '@/components/inbound/FilterBar'
 import { CallsTable } from '@/components/inbound/CallsTable'
 import { CallDetailModal } from '@/components/inbound/CallDetailModal'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import type { InboundCallWithDetails, Profile, CallStatus } from '@/lib/types'
 
 export default function InboundPage() {
   const [selectedCall, setSelectedCall] = useState<InboundCallWithDetails | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<InboundCallWithDetails | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const {
     calls,
@@ -80,18 +92,27 @@ export default function InboundPage() {
     }
   }
 
-  const handleDeleteCall = async (call: InboundCallWithDetails) => {
-    const confirmed = window.confirm('Moechtest du diesen Anruf wirklich loeschen?')
-    if (!confirmed) return
+  const handleDeleteRequest = (call: InboundCallWithDetails) => {
+    setDeleteTarget(call)
+    setDeleteOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
 
     try {
-      await deleteCall(call.id)
-      if (selectedCall?.id === call.id) {
+      await deleteCall(deleteTarget.id)
+      if (selectedCall?.id === deleteTarget.id) {
         setSelectedCall(null)
         setModalOpen(false)
       }
+      setDeleteOpen(false)
+      setDeleteTarget(null)
     } catch (error) {
       console.error('Failed to delete call:', error)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -129,7 +150,7 @@ export default function InboundPage() {
         onStatusChange={handleStatusChange}
         onAssignmentChange={handleAssignmentChange}
         onViewDetails={handleViewDetails}
-        onDelete={handleDeleteCall}
+        onDelete={handleDeleteRequest}
       />
 
       {/* Detail-Modal */}
@@ -139,8 +160,41 @@ export default function InboundPage() {
         onOpenChange={setModalOpen}
         onStatusChange={handleStatusChange}
         onNotesChange={handleNotesChange}
-        onDelete={handleDeleteCall}
+        onDelete={handleDeleteRequest}
       />
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open)
+          if (!open) setDeleteTarget(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anruf loeschen?</DialogTitle>
+            <DialogDescription>
+              Der Anruf wird dauerhaft geloescht und kann nicht wiederhergestellt werden.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Loeschen...' : 'Loeschen'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
