@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
 
   const status = searchParams.get('status') as CallStatus | 'all' | null
-  const limit = parseInt(searchParams.get('limit') || '50')
+  const limitParam = searchParams.get('limit')
+  const limit = limitParam ? parseInt(limitParam) : null
   const countOnly = searchParams.get('count_only') === 'true'
   const timeRange = searchParams.get('time')
   const dateFrom = searchParams.get('from')
@@ -39,7 +40,6 @@ export async function GET(request: NextRequest) {
       profiles:assigned_to (id, full_name, email)
     `)
     .order('called_at', { ascending: false })
-    .limit(limit)
 
   // Status-Filter
   if (status && status !== 'all') {

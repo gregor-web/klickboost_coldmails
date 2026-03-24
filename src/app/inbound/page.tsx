@@ -6,6 +6,7 @@ import { StatsCards } from '@/components/inbound/StatsCards'
 import { FilterBar } from '@/components/inbound/FilterBar'
 import { CallsTable } from '@/components/inbound/CallsTable'
 import { CallDetailModal } from '@/components/inbound/CallDetailModal'
+import { TeamManager } from '@/components/inbound/TeamManager'
 import {
   Dialog,
   DialogContent,
@@ -119,11 +120,17 @@ export default function InboundPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Inbound-Anrufe</h1>
-        <p className="text-muted-foreground mt-1">
-          Verwaltung eingehender Anrufe und Voicemails
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Inbound-Anrufe</h1>
+          <p className="text-muted-foreground mt-1">
+            Verwaltung eingehender Anrufe und Voicemails
+          </p>
+        </div>
+        <TeamManager
+          profiles={profiles}
+          onProfilesChange={setProfiles}
+        />
       </div>
 
       {/* Statistik-Karten */}

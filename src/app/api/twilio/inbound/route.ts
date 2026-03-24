@@ -20,20 +20,28 @@ export async function POST(request: NextRequest) {
   const callSid = formData.get('CallSid') as string || ''
   const callStatus = formData.get('CallStatus') as string || ''
 
-  // In Supabase speichern
+  // In Supabase speichern (nur wenn CallSid noch nicht existiert)
   try {
     const supabase = createServerClient()
 
-    await supabase.from('inbound_calls_+4915888651151').insert({
-      caller_phone: callerPhone,
-      called_number: calledNumber,
-      twilio_call_sid: callSid,
-      call_duration: 0,
-      status: 'offen',
-      notes: `CallStatus: ${callStatus}`,
-      called_at: new Date().toISOString(),
-      has_voicemail: false
-    })
+    const { data: existing } = await supabase
+      .from('inbound_calls_+4915888651151')
+      .select('id')
+      .eq('twilio_call_sid', callSid)
+      .maybeSingle()
+
+    if (!existing) {
+      await supabase.from('inbound_calls_+4915888651151').insert({
+        caller_phone: callerPhone,
+        called_number: calledNumber,
+        twilio_call_sid: callSid,
+        call_duration: 0,
+        status: 'offen',
+        notes: `CallStatus: ${callStatus}`,
+        called_at: new Date().toISOString(),
+        has_voicemail: false
+      })
+    }
   } catch (error) {
     console.error('Error saving call:', error)
   }

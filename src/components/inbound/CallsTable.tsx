@@ -21,6 +21,7 @@ import { StatusBadge } from './StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatPhoneNumber, formatRelativeTime, formatDuration } from '@/lib/utils'
 import type { InboundCallWithDetails, CallStatus, Profile } from '@/lib/types'
+import { InlineVoicemailPlayer } from './InlineVoicemailPlayer'
 import {
   AlertCircle,
   Clock,
@@ -110,15 +111,17 @@ export function CallsTable({
                 </span>
               </TableCell>
 
-              {/* Art */}
+              {/* Art / Voicemail */}
               <TableCell>
-                <div className="flex gap-1">
-                  {call.has_voicemail && (
+                <div className="flex flex-col gap-1">
+                  {call.has_voicemail && call.voicemail_url ? (
+                    <InlineVoicemailPlayer url={call.voicemail_url} />
+                  ) : call.has_voicemail ? (
                     <Badge variant="secondary" className="gap-1">
                       <Voicemail className="h-3 w-3" />
                       Voicemail
                     </Badge>
-                  )}
+                  ) : null}
                   {call.callback_requested && (
                     <Badge variant="outline" className="gap-1">
                       <PhoneForwarded className="h-3 w-3" />
